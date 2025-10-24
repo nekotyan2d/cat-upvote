@@ -16,7 +16,12 @@
     ```bash
     npm install
     ```
-3. Запустите dev сервер:
+3. Выполните миграции базы данных:
+    ```bash
+    npm run migrate
+    ```
+    > Для заполнения базы данных начальными данными используйте [reddit-post-parser](https://github.com/nekotyan2d/reddit-post-parser)
+4. Запустите dev сервер:
     ```bash
     npm run dev
     ```
