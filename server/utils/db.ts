@@ -1,4 +1,5 @@
 import pg from "pg";
+import "dotenv/config";
 
 export const connectToDb = async () => {
     const client = new pg.Client({
