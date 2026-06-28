@@ -9,8 +9,8 @@
             @load="onImageLoad" />
         <div
             class="card__score"
-            :class="{ 'card__score--unknown': !post.score }">
-            {{ post.score || "?" }}
+            :class="{ 'card__score--unknown': post.score == null }">
+            {{ post.score ?? "?" }}
         </div>
     </div>
 </template>

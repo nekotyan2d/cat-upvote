@@ -1,25 +1,25 @@
 import { z } from "zod";
+import { pool } from "~~/server/utils/db";
 
 export default defineEventHandler(async (event) => {
     const params = await getValidatedRouterParams(
         event,
         z.object({
             id: z.uuid(),
-        }).parse
+        }).parse,
     );
 
     const body = await readValidatedBody(
         event,
         z.object({
             choice: z.number().min(1).max(2),
-        }).parse
+        }).parse,
     );
 
-    const db = await connectToDb();
+    const db = await pool.connect();
 
     const gameId = params.id;
 
-    let nextGame: Game;
     let post1: Post, post2: Post;
 
     let score1: number, score2: number;
@@ -28,11 +28,11 @@ export default defineEventHandler(async (event) => {
         await db.query("BEGIN");
 
         const data = await db.query(
-            `SELECT 
+            `SELECT
                 p1.post_id AS post_id_1, p1.score as score_1, p1.img_url AS img_url_1,
                 p2.post_id AS post_id_2, p2.score as score_2, p2.img_url AS img_url_2
             FROM game JOIN post AS p1 ON game.post_id_1 = p1.post_id JOIN post AS p2 ON game.post_id_2 = p2.post_id WHERE game.id = $1`,
-            [gameId]
+            [gameId],
         );
         if (data.rows.length === 0) {
             throw new Error("Game not found");
@@ -49,7 +49,10 @@ export default defineEventHandler(async (event) => {
         score1 = gameInfo.score_1;
         score2 = gameInfo.score_2;
 
-        if (!(body.choice === 1 && score1 > score2) && !(body.choice === 2 && score2 > score1)) {
+        // ponytail: a tie counts as a correct guess for whichever side was picked
+        const correct = (body.choice === 1 && score1 >= score2) || (body.choice === 2 && score2 >= score1);
+
+        if (!correct) {
             await db.query(`DELETE FROM game WHERE id = $1`, [gameId]);
             await db.query("COMMIT");
 
@@ -76,12 +79,11 @@ export default defineEventHandler(async (event) => {
 
         [post2] = postsData.rows;
 
-        const updateResult = await db.query(
-            `UPDATE game SET post_id_1 = $1, post_id_2 = $2, round = round + 1 WHERE id = $3 RETURNING *`,
-            [post1.post_id, post2.post_id, gameId]
-        );
-
-        nextGame = updateResult.rows[0];
+        await db.query(`UPDATE game SET post_id_1 = $1, post_id_2 = $2, round = round + 1 WHERE id = $3`, [
+            post1.post_id,
+            post2.post_id,
+            gameId,
+        ]);
 
         await db.query("COMMIT");
     } catch (error: any) {
@@ -89,11 +91,11 @@ export default defineEventHandler(async (event) => {
         console.error("Error making choice:", error);
         return {
             ok: false,
-            message: `Error making choice: ${error.message}`,
+            message: "Error making choice",
         } as ErrorResponse;
+    } finally {
+        db.release();
     }
-
-    await db.end();
 
     return {
         ok: true,

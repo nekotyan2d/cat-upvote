@@ -1,8 +1,8 @@
-import { connectToDb } from "~~/server/utils/db";
+import { pool } from "~~/server/utils/db";
 import { v4 as uuid4 } from "uuid";
 
-export default defineEventHandler(async (event) => {
-    const db = await connectToDb();
+export default defineEventHandler(async () => {
+    const db = await pool.connect();
 
     let game: Game;
     let post1: Post, post2: Post;
@@ -12,11 +12,19 @@ export default defineEventHandler(async (event) => {
 
         const postsData = await db.query(`SELECT * FROM post ORDER BY RANDOM() LIMIT 2`);
 
+        if (postsData.rows.length < 2) {
+            await db.query("ROLLBACK");
+            return {
+                ok: false,
+                message: "Not enough posts to start a game",
+            } as ErrorResponse;
+        }
+
         [post1, post2] = postsData.rows;
 
         const insertResult = await db.query(
             `INSERT INTO game (id, post_id_1, post_id_2) VALUES ($1, $2, $3) RETURNING *`,
-            [uuid4(), post1.post_id, post2.post_id]
+            [uuid4(), post1.post_id, post2.post_id],
         );
 
         game = insertResult.rows[0];
@@ -29,9 +37,10 @@ export default defineEventHandler(async (event) => {
             ok: false,
             message: "Error creating new game",
         } as ErrorResponse;
+    } finally {
+        db.release();
     }
 
-    await db.end();
     return {
         ok: true,
         message: "New game created successfully",

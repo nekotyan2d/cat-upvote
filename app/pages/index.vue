@@ -14,7 +14,7 @@
                     @appear-finished="appearing[0] = false"
                     @image-loaded="imageLoaded[0] = true" />
                 <Card
-                    :post="gameData.posts[1]! "
+                    :post="gameData.posts[1]!"
                     :appearing="appearing[1]"
                     @click="select(2)"
                     @appear-finished="appearing[1] = false"
@@ -62,6 +62,8 @@ const gameData = ref<Game>({
 const appearing = ref<[boolean, boolean]>([true, true]);
 const imageLoaded = ref<[boolean, boolean]>([false, false]);
 
+const REVEAL_MS = 5000;
+
 const gameFinished = ref(false);
 const gameRounds = ref(0);
 const gameBestRounds = ref(localStorage.getItem("bestRounds") ?? 0);
@@ -73,7 +75,7 @@ watch(
             appearing.value = [true, true];
         }
     },
-    { deep: true }
+    { deep: true },
 );
 
 watch(gameRounds, (newVal) => {
@@ -128,14 +130,14 @@ async function select(choice: number) {
                     imageLoaded.value = [false, false];
                     appearing.value = [true, true];
                     gameRounds.value++;
-                }, 5000);
+                }, REVEAL_MS);
             } else {
                 gameData.value.posts[1]!.score = res.response.posts[1]!.score;
                 gameFinished.value = true;
 
                 setTimeout(() => {
                     gameData.value.id = "";
-                }, 5000);
+                }, REVEAL_MS);
             }
         }
     } catch (error) {
