@@ -2,6 +2,7 @@ export interface Post {
     post_id: string;
     score: number | null;
     img_url: string;
+    created_at: string;
 }
 
 export interface Game {

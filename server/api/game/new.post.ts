@@ -51,11 +51,13 @@ export default defineEventHandler(async () => {
                     post_id: post1.post_id,
                     score: post1.score,
                     img_url: post1.img_url,
+                    created_at: post1.created_at,
                 },
                 {
                     post_id: post2.post_id,
                     score: null,
                     img_url: post2.img_url,
+                    created_at: post2.created_at,
                 },
             ],
         },

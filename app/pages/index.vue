@@ -10,12 +10,14 @@
                 <Card
                     :post="gameData.posts[0]!"
                     :appearing="appearing[0]"
+                    :open-orig="true"
                     @click="select(1)"
                     @appear-finished="appearing[0] = false"
                     @image-loaded="imageLoaded[0] = true" />
                 <Card
                     :post="gameData.posts[1]!"
                     :appearing="appearing[1]"
+                    :open-orig="gameFinished"
                     @click="select(2)"
                     @appear-finished="appearing[1] = false"
                     @image-loaded="imageLoaded[1] = true" />
@@ -50,11 +52,13 @@ const gameData = ref<Game>({
             post_id: "",
             score: null,
             img_url: "",
+            created_at: "",
         },
         {
             post_id: "",
             score: null,
             img_url: "",
+            created_at: "",
         },
     ],
 });

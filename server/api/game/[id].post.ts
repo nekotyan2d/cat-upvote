@@ -29,8 +29,8 @@ export default defineEventHandler(async (event) => {
 
         const data = await db.query(
             `SELECT
-                p1.post_id AS post_id_1, p1.score as score_1, p1.img_url AS img_url_1,
-                p2.post_id AS post_id_2, p2.score as score_2, p2.img_url AS img_url_2
+                p1.post_id AS post_id_1, p1.score as score_1, p1.img_url AS img_url_1, p1.created_at AS created_at_1,
+                p2.post_id AS post_id_2, p2.score as score_2, p2.img_url AS img_url_2, p2.created_at AS created_at_2
             FROM game JOIN post AS p1 ON game.post_id_1 = p1.post_id JOIN post AS p2 ON game.post_id_2 = p2.post_id WHERE game.id = $1`,
             [gameId],
         );
@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
             post_id: gameInfo.post_id_2,
             score: gameInfo.score_2,
             img_url: gameInfo.img_url_2,
+            created_at: gameInfo.created_at_2,
         };
 
         score1 = gameInfo.score_1;
@@ -117,11 +118,13 @@ export default defineEventHandler(async (event) => {
                         post_id: post1.post_id,
                         score: post1.score,
                         img_url: post1.img_url,
+                        created_at: post1.created_at,
                     },
                     {
                         post_id: post2.post_id,
                         score: null,
                         img_url: post2.img_url,
+                        created_at: post2.created_at,
                     },
                 ],
             },
