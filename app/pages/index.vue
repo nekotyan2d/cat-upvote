@@ -1,186 +1,131 @@
 <template>
-    <div>
-        <h2>У кого больше апвоутов?</h2>
-        <div
-            v-if="gameData.id"
-            class="game-container">
-            <div
-                class="cards"
-                :class="{ hidden: !(imageLoaded[0] && imageLoaded[1]) }">
-                <Card
-                    :post="gameData.posts[0]!"
-                    :appearing="appearing[0]"
-                    :open-orig="true"
-                    @click="select(1)"
-                    @appear-finished="appearing[0] = false"
-                    @image-loaded="imageLoaded[0] = true" />
-                <Card
-                    :post="gameData.posts[1]!"
-                    :appearing="appearing[1]"
-                    :open-orig="gameFinished"
-                    @click="select(2)"
-                    @appear-finished="appearing[1] = false"
-                    @image-loaded="imageLoaded[1] = true" />
-            </div>
-            <div
-                v-if="!(imageLoaded[0] && imageLoaded[1])"
-                class="cards--loading">
-                Загрузка...
-            </div>
-            <div class="game__rounds">Раунд: {{ gameRounds + 1 }}</div>
+    <section class="hero">
+        <div class="hero__left">
+            <h1>У кого больше <span class="highlight">апвоутов?</span></h1>
+            <p>Угадывай и соревнуйся с другими игроками</p>
+            <button @click="play">Играть</button>
         </div>
-        <div v-else>
-            <button @click="start">Начать</button>
+        <div class="hero__right">
+            <Card
+                v-for="post in posts"
+                :post="post"
+                :open-orig="false"
+                :appearing="false" />
         </div>
-        <div
-            v-if="gameFinished"
-            class="game-results">
-            <h2>Игра завершена!</h2>
-            <h3>Текущая попытка</h3>
-            <div class="current-rounds">{{ gameRounds }}</div>
-            <h3>Лучшая попытка</h3>
-            <div class="best-rounds">{{ gameBestRounds }}</div>
-        </div>
-    </div>
+    </section>
+    <Rating />
 </template>
 <script lang="ts" setup>
-import type Card from "../components/Card.vue";
-const gameData = ref<Game>({
-    id: "",
-    posts: [
-        {
-            post_id: "",
-            score: null,
-            img_url: "",
-            created_at: "",
-        },
-        {
-            post_id: "",
-            score: null,
-            img_url: "",
-            created_at: "",
-        },
-    ],
-});
+import { useGameStore } from "~/stores/game";
 
-const appearing = ref<[boolean, boolean]>([true, true]);
-const imageLoaded = ref<[boolean, boolean]>([false, false]);
+const gameStore = useGameStore();
 
-const REVEAL_MS = 5000;
+const { start } = gameStore;
 
-const gameFinished = ref(false);
-const gameRounds = ref(0);
-const gameBestRounds = ref(localStorage.getItem("bestRounds") ?? 0);
-
-watch(
-    imageLoaded,
-    (newVal) => {
-        if (newVal[0] && newVal[1]) {
-            appearing.value = [true, true];
-        }
+const posts: Post[] = [
+    {
+        post_id: "1uorxwp/went_hiking_in_the_chamonix_and_this_lil_fella/",
+        score: 5200,
+        img_url:
+            "https://preview.redd.it/went-hiking-in-the-chamonix-and-this-lil-fella-started-v0-hrfbmz59rkbh1.jpg?width=640&crop=smart&auto=webp&s=74b28e0561d15cdcc44c18142cf8d0a39c9ea132",
+        created_at: "2026-07-06T09:01:56.149Z",
     },
-    { deep: true },
-);
+    {
+        post_id: "1uv2mim/my_little_one_is_gone_im_heartbroken_for_me_and/",
+        score: null,
+        img_url:
+            "https://preview.redd.it/my-little-one-is-gone-im-heartbroken-for-me-and-his-big-v0-1truf7a6pxch1.jpg?width=640&crop=smart&auto=webp&s=0200569d8b386a04fbeab0185cfdca51e04afe43",
+        created_at: "2026-07-13T05:37:32.661Z",
+    },
+];
 
-watch(gameRounds, (newVal) => {
-    const bestRound = localStorage.getItem("bestRounds");
-    if (!bestRound || newVal > +bestRound) {
-        localStorage.setItem("bestRounds", newVal.toString());
-        gameBestRounds.value = newVal;
-    }
-});
-
-async function start() {
+async function play() {
     try {
-        const res = await $fetch("/api/game/new", {
-            method: "POST",
-        });
-
-        if (res && res.ok) {
-            gameFinished.value = false;
-            gameRounds.value = 0;
-
-            gameData.value.id = res.response.id;
-
-            gameData.value.posts = [res.response.posts[0]!, res.response.posts[1]!];
-
-            appearing.value = [true, true];
-            imageLoaded.value = [false, false];
-        }
-    } catch (error) {
-        console.error("Error starting new game:", error);
-    }
-}
-
-async function select(choice: number) {
-    if (gameFinished.value) return;
-    try {
-        const res = await $fetch(`/api/game/${gameData.value.id}`, {
-            method: "POST",
-            body: {
-                choice,
-            },
-        });
-
-        if (res && res.ok) {
-            if ("next_game" in res.response) {
-                gameData.value.posts[0]!.score = res.response.game.posts[0]!.score;
-                gameData.value.posts[1]!.score = res.response.game.posts[1]!.score;
-
-                const nextGame = res.response.next_game;
-
-                setTimeout(() => {
-                    gameData.value.posts = [nextGame.posts[0]!, nextGame.posts[1]!];
-                    imageLoaded.value = [false, false];
-                    appearing.value = [true, true];
-                    gameRounds.value++;
-                }, REVEAL_MS);
-            } else {
-                gameData.value.posts[1]!.score = res.response.posts[1]!.score;
-                gameFinished.value = true;
-
-                setTimeout(() => {
-                    gameData.value.id = "";
-                }, REVEAL_MS);
-            }
-        }
-    } catch (error) {
-        console.error("Error making choice:", error);
-    }
+        await start();
+        navigateTo(`/game/${gameStore.gameId}`);
+    } catch (error) {}
 }
 </script>
-<style lang="scss">
-.game-container {
-    position: relative;
+<style lang="scss" scoped>
+.hero {
+    height: 80dvh;
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: var(--gap-normal);
 
-    .game__rounds {
-        text-align: center;
-        font-size: 1.2rem;
-        color: var(--color-text);
+    &__left {
+        flex: 2;
+
+        h1 {
+            font-size: 3rem;
+            line-height: 0.9;
+        }
+    }
+
+    &__right {
+        flex: 3;
+        display: flex;
+        gap: var(--gap-normal);
+
+        &:deep(.card) {
+            height: unset;
+            width: 250px;
+
+            &:first-child {
+                transform: translateX(20px) rotate(-10deg);
+            }
+
+            &:last-child {
+                transform: rotate(10deg) translateX(-20px);
+            }
+
+            .card__image {
+                max-height: 20dvh;
+            }
+        }
     }
 }
-.cards {
-    display: flex;
-    gap: var(--gap-normal);
 
-    &.hidden {
-        visibility: hidden;
+@media screen and (max-width: 1024px) {
+    .hero {
+        flex-direction: column;
+        gap: 4rem;
+
+        &__left {
+            width: 100%;
+            flex: unset;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        &__right {
+            flex: unset;
+        }
     }
+}
 
-    &--loading {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 500px;
-        font-size: 1.5rem;
-        color: var(--color-text);
+@media screen and (max-width: 768px) {
+    .hero {
+        flex-direction: column;
+
+        &__left {
+            width: 100%;
+        }
+    }
+}
+@media screen and (max-width: 640px) {
+    .hero {
+        flex-direction: column;
+
+        &__left {
+            width: 100%;
+        }
+
+        &__right {
+            &:deep(.card) {
+                width: auto;
+            }
+        }
     }
 }
 </style>

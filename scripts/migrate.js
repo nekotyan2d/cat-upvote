@@ -24,6 +24,16 @@ async function migrate() {
             `);
 
         await client.query(`
+            CREATE TABLE IF NOT EXISTS attempts (
+                id UUID PRIMARY KEY DEFAULT uuidv4(),
+                name VARCHAR DEFAULT NULL,
+                round INT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                device_id UUID NOT NULL DEFAULT uuidv4()
+            );
+            `);
+
+        await client.query(`
             CREATE TABLE IF NOT EXISTS game (
                 id UUID PRIMARY KEY,
                 post_id_1 VARCHAR REFERENCES post(post_id) ON DELETE CASCADE,

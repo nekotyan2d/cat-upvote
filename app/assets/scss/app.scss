@@ -19,6 +19,31 @@ button {
     padding: 0 var(--padding-normal);
     font-size: var(--font-size-normal);
     font-weight: bold;
+
+    &.secondary {
+        background-color: transparent;
+        color: var(--color-btn-background);
+        border: 1px solid var(--color-btn-background);
+    }
+}
+
+input {
+    font-family: inherit;
+    font-size: var(--font-size-normal);
+    height: 50px;
+    border: 1px solid transparent;
+    outline: none;
+    border-radius: var(--border-radius);
+    padding: var(--padding-normal);
+    background-color: var(--color-input-background);
+
+    &:focus {
+        border-color: var(--color-input-border);
+    }
+
+    &::placeholder {
+        color: var(--color-input-placeholder);
+    }
 }
 
 main {
@@ -30,4 +55,8 @@ main {
 
 * {
     box-sizing: border-box;
+}
+
+.highlight {
+    color: var(--color-primary);
 }

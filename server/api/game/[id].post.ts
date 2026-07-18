@@ -12,9 +12,12 @@ export default defineEventHandler(async (event) => {
     const body = await readValidatedBody(
         event,
         z.object({
-            choice: z.number().min(1).max(2),
+            choice: z.literal(0).or(z.literal(1)),
         }).parse,
     );
+
+    const cookies = parseCookies(event);
+    const deviceId = cookies["device-id"];
 
     const db = await pool.connect();
 
@@ -29,6 +32,7 @@ export default defineEventHandler(async (event) => {
 
         const data = await db.query(
             `SELECT
+                round,
                 p1.post_id AS post_id_1, p1.score as score_1, p1.img_url AS img_url_1, p1.created_at AS created_at_1,
                 p2.post_id AS post_id_2, p2.score as score_2, p2.img_url AS img_url_2, p2.created_at AS created_at_2
             FROM game JOIN post AS p1 ON game.post_id_1 = p1.post_id JOIN post AS p2 ON game.post_id_2 = p2.post_id WHERE game.id = $1`,
@@ -51,26 +55,44 @@ export default defineEventHandler(async (event) => {
         score2 = gameInfo.score_2;
 
         // ponytail: a tie counts as a correct guess for whichever side was picked
-        const correct = (body.choice === 1 && score1 >= score2) || (body.choice === 2 && score2 >= score1);
+        const correct = (body.choice === 0 && score1 >= score2) || (body.choice === 1 && score2 >= score1);
 
         if (!correct) {
-            await db.query(`DELETE FROM game WHERE id = $1`, [gameId]);
+            const recordRoundsData = await db.query(
+                "SELECT MAX(round) as max_round FROM attempts WHERE device_id = $1",
+                [deviceId],
+            );
+            const recordRounds = recordRoundsData.rows[0].max_round;
+
+            const attemptData = await db.query("INSERT INTO attempts (round, device_id) VALUES ($1, $2) RETURNING id", [
+                gameInfo.round - 1,
+                deviceId,
+            ]);
+            const id = attemptData.rows[0].id;
+
             await db.query("COMMIT");
 
             return {
                 ok: true,
                 message: "Game over",
                 response: {
-                    posts: [
-                        {
-                            score: score1,
-                        },
-                        {
-                            score: score2,
-                        },
-                    ],
+                    game: {
+                        attempt_id: id,
+                        record_rounds: recordRounds,
+                        posts: [
+                            {
+                                score: score1,
+                            },
+                            {
+                                score: score2,
+                            },
+                        ],
+                    },
                 },
-            } as SuccessResponse<{ posts: { score: number }[] }>;
+            } as SuccessResponse<{
+                game: { attempt_id: string; record_rounds: number; posts: { score: number }[] };
+                next_game: undefined;
+            }>;
         }
 
         const postsData = await db.query(`SELECT * FROM post WHERE post_id NOT IN ($1, $2) ORDER BY RANDOM() LIMIT 1`, [

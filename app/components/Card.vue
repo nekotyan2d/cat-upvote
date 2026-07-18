@@ -1,12 +1,20 @@
 <template>
     <div
         class="card"
-        :class="{ appearing: appearing }">
+        :class="{
+            appearing: appearing,
+            'card--correct': selected && correct,
+            'card--incorrect': selected && correct !== undefined && !correct,
+            'card--loading': loading,
+        }">
         <div class="card__image">
             <img
+                ref="imageEl"
                 :src="post.img_url"
+                :key="post.img_url"
                 alt="Post Image"
-                @load="onImageLoad" />
+                @load="onImageLoad"
+                @error="onImageError" />
         </div>
 
         <div class="card__backdrop">
@@ -44,13 +52,18 @@
     </div>
 </template>
 <script lang="ts" setup>
+const imageEl = ref<HTMLImageElement | null>(null);
+
 const props = defineProps<{
     post: Post;
     openOrig: boolean;
     appearing: boolean;
+    correct?: boolean;
+    selected?: boolean;
 }>();
 
-const emit = defineEmits(["appearFinished", "imageLoaded"]);
+const loading = ref(true);
+const emit = defineEmits(["appearFinished"]);
 
 const formattedDate = computed(() => {
     const date = new Date(props.post.created_at);
@@ -68,6 +81,20 @@ setTimeout(() => {
 }, 500);
 
 watch(
+    () => props.post.img_url,
+    async () => {
+        loading.value = true;
+
+        // Cached images can skip a visible loading phase and resolve immediately.
+        await nextTick();
+        if (imageEl.value?.complete) {
+            onImageLoad();
+        }
+    },
+    { immediate: true },
+);
+
+watch(
     () => props.appearing,
     () => {
         if (props.appearing) {
@@ -79,10 +106,15 @@ watch(
 );
 
 function onImageLoad() {
-    emit("imageLoaded");
+    loading.value = false;
+
     setTimeout(() => {
         emit("appearFinished");
     }, 500);
+}
+
+function onImageError() {
+    loading.value = false;
 }
 </script>
 <style lang="scss">
@@ -91,12 +123,56 @@ function onImageLoad() {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex: 1;
+    height: 70dvh;
+    flex: 0 0 calc((100% - var(--gap-normal)) / 2);
     border-radius: var(--border-radius);
     background-color: var(--color-background-secondary);
     position: relative;
     overflow: hidden;
     padding: var(--gap-normal);
+
+    &--loading {
+        .card__image,
+        .card__backdrop,
+        .card__open-orig,
+        .card__footer {
+            visibility: hidden;
+        }
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 100;
+            pointer-events: none;
+            border-radius: inherit;
+            background:
+                linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0) 20%,
+                    rgba(255, 255, 255, 0.12) 50%,
+                    rgba(255, 255, 255, 0) 80%
+                ),
+                linear-gradient(
+                    90deg,
+                    var(--color-background-secondary) 0%,
+                    var(--color-background) 50%,
+                    var(--color-background-secondary) 100%
+                );
+            background-size: 250% 100%;
+            animation: card-shimmer 2.4s infinite;
+        }
+    }
+
+    &--correct {
+        border: 2px solid var(--color-green);
+        animation: correct 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    &--incorrect {
+        border: 2px solid var(--color-red);
+        animation: incorrect 0.5s ease-in-out;
+    }
 
     &.appearing {
         animation: appear 0.5s ease-in-out;
@@ -180,6 +256,41 @@ function onImageLoad() {
     to {
         opacity: 1;
         transform: scale(1);
+    }
+}
+
+@keyframes correct {
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes incorrect {
+    20% {
+        transform: translateX(-10px);
+    }
+    40% {
+        transform: translateX(10px);
+    }
+    60% {
+        transform: translateX(-10px);
+    }
+    80% {
+        transform: translateX(10px);
+    }
+}
+
+@keyframes card-shimmer {
+    0% {
+        background-position:
+            -250% 0,
+            0 0;
+    }
+
+    100% {
+        background-position:
+            250% 0,
+            0 0;
     }
 }
 </style>

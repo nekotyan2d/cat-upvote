@@ -10,6 +10,14 @@ export interface Game {
     posts: Post[];
 }
 
+export interface RatingItem {
+    name: string;
+    round: number;
+    created_at: string;
+}
+
+export type ImageChoice = 0 | 1;
+
 export interface ApiResponse<T> {
     ok: boolean;
     message: string;
