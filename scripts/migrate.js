@@ -25,11 +25,11 @@ async function migrate() {
 
         await client.query(`
             CREATE TABLE IF NOT EXISTS attempts (
-                id UUID PRIMARY KEY DEFAULT uuidv4(),
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR DEFAULT NULL,
                 round INT NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                device_id UUID NOT NULL DEFAULT uuidv4()
+                device_id UUID NOT NULL DEFAULT gen_random_uuid()
             );
             `);
 
